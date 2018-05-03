@@ -31,97 +31,72 @@ class NP_Strand
   // attributes
   uint8_t wait;
   int mode;
-  uint32_t nextColor;
+  int nextPixel_i;
+  int nextPixel_j;
   unsigned long previousMillis;
   Adafruit_NeoPixel strip;
   
   // todo: rewrite these in terms of nextColor()
   
-  // Fill the dots one after the other with a color
-  void colorWipe(uint32_t c, uint8_t wait)
+  uint32_t nextColorWipeRed()
   {
-    for(uint16_t i=0; i<strip.numPixels(); i++)
+    return nextColorWipe(strip.Color(255, 0, 0));
+  }
+
+  uint32_t nextColorWipeGreen()
+  {
+    return nextColorWipe(strip.Color(0, 255, 0));
+  }
+
+  uint32_t nextColorWipeBlue()
+  {
+    return nextColorWipe(strip.Color(0, 0, 255));
+  }
+
+  uint32_t nextColorWipe(uint32_t color)
+  {
+    waiting = true;
+    index_i %= strip.numPixels();
+    return color;
+  }
+
+  uint32_t nextRainbow()
+  {
+    index_i %= strip.numPixels();
+    index_j %= 256;
+
+    if(index_i == 0)
     {
-      strip.setPixelColor(i, c);
-      strip.show();
-      delay(wait);
+      waiting = true;
     }
-  }
-
-  void rainbow(uint8_t wait)
-  {
-    uint16_t i, j;
-
-    for(j=0; j<256; j++)
+    else
     {
-      for(i=0; i<strip.numPixels(); i++)
-      {
-        strip.setPixelColor(i, Wheel((i+j) & 255));
-      }
-      strip.show();
-      delay(wait);
+      waiting = false;
     }
+
+    //uint32_t = color = Wheel((i+j) & 255);
+
+    return Wheel((index_i + index_j) & 255);
   }
 
-  // Slightly different, this makes the rainbow equally distributed throughout
-  void rainbowCycle(uint8_t wait)
+  // rewrite this so that it sets the wait based on every index
+  uint32_t nextRainbowCycle()
   {
-    uint16_t i, j;
+    index_i %= strip.numPixels();
+    index_j %= 1280; //1280 = 256 * 5
 
-    for(j=0; j<256*5; j++)
-    { // 5 cycles of all colors on wheel
-      for(i=0; i< strip.numPixels(); i++)
-      {
-        strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-      }
-      strip.show();
-      delay(wait);
+    if(index_i == 0)
+    {
+      waiting = true;
     }
-  }
-
-  //Theatre-style crawling lights.
-  void theaterChase(uint32_t c, uint8_t wait)
-  {
-    for (int j=0; j<10; j++) {  //do 10 cycles of chasing
-      for (int q=0; q < 3; q++)
-      {
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3)
-        {
-          strip.setPixelColor(i+q, c);    //turn every third pixel on
-        }
-        strip.show();
-
-        delay(wait);
-
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3)
-        {
-          strip.setPixelColor(i+q, 0);        //turn every third pixel off
-        }
-      }
+    else
+    {
+      waiting = false;
     }
-  }
 
-  //Theatre-style crawling lights with rainbow effect
-  void theaterChaseRainbow(uint8_t wait)
-  {
-    for (int j=0; j < 256; j++)
-    {     // cycle all 256 colors in the wheel
-      for (int q=0; q < 3; q++)
-      {
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3)
-        {
-          strip.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
-        }
-        strip.show();
+    //uint32_t color = Wheel((i*265/pixels) + j) & 255);
 
-        delay(wait);
-
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3)
-        {
-          strip.setPixelColor(i+q, 0);        //turn every third pixel off
-        }
-      }
-    }
+    return Wheel(((index_i*265/strip.numPixels()) + index_j) & 255);
   }
 
   // Input a value 0 to 255 to get a color value.
@@ -142,6 +117,36 @@ class NP_Strand
     return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
   }
   
+  uint32_t getNextColor()
+  {
+    uint32_t color;
+
+    switch(mode)
+    {
+      case 0: color = nextColorWipeRed();
+              break;
+
+      case 1: color = nextColorWipeGreen();
+              break;
+
+      case 2: color = nextColorWipeBlue();
+              break;
+
+      case 3: color = nextRainbow();
+              break;
+
+      case 4: color = nextRainbowCycle();
+              break;
+
+      // this case should never happen...but if something goes wrong, it could infinitely recurse.  rewrite.
+       default: mode += 1;
+                mode %= 5;
+                color = getNextColor();
+    }
+    
+    return color;
+  }
+    
   
   public:
   NP_Strand(numPixels, pin, flags)
@@ -150,24 +155,38 @@ class NP_Strand
     wait = 60;
     previousMillis = 0;
     strip = Adafruit_NeoPixel(numPixels, pin, flags);
+    nextColor = strip.color(255,0,0);
+    strip.begin();
+    strip.show(); // Initialize all pixels to 'off'
   }
   
-  update()
+  void update()
   {
-    
+    if(millis() - previousMillis > wait)
+    {
+      previousMillis = 0;
+      strip.setPixelColor(index_i, getNextColor());
+      strip.show();
+    }
   }
   
-  // todo: add a neopixel variable, constructor, update() function, previousMillis, figure out how to write the different strip functions
+  void setMode(int mode)
+  {
+    this->mode = mode;
+    nextPixel_i = 0;
+    nextPixel_j = 0;
+  }
 }
 
 void setup()
 {
-  strip.begin();
-  strip.show(); // Initialize all pixels to 'off'
+  // strip.begin();
+  // strip.show(); // Initialize all pixels to 'off'
 }
 
 void loop()
 {
+  
   // Some example procedures showing how to display to the pixels:
   colorWipe(strip.Color(255, 0, 0), 50); // Red
   colorWipe(strip.Color(0, 255, 0), 50); // Green
