@@ -1,3 +1,8 @@
+// from https://github.com/adafruit/Adafruit_NeoPixel/blob/master/examples/strandtest/strandtest.ino
+// edited to write as object-oriented, using millis() instead of delay, etc.
+// see https://learn.adafruit.com/multi-tasking-the-arduino-part-1/overview
+// and https://learn.adafruit.com/multi-tasking-the-arduino-part-2/overview
+
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
   #include <avr/power.h>
@@ -20,19 +25,24 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
 // and minimize distance between Arduino and first pixel.  Avoid connecting
 // on a live circuit...if you must, connect GND first.
 
-void setup() {
-  // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
-  #if defined (__AVR_ATtiny85__)
-    if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
-  #endif
-  // End of trinket special code
+// neopixel strand
+class NP_Strand
+{
+  // attributes
+  int mode;
+  uint8_t wait;
+  
+  // todo: add a neopixel variable, constructor, update() function, previousMillis, figure out how to write the different strip functions
+}
 
-
+void setup()
+{
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 }
 
-void loop() {
+void loop()
+{
   // Some example procedures showing how to display to the pixels:
   colorWipe(strip.Color(255, 0, 0), 50); // Red
   colorWipe(strip.Color(0, 255, 0), 50); // Green
@@ -49,7 +59,8 @@ void loop() {
 }
 
 // Fill the dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait) {
+void colorWipe(uint32_t c, uint8_t wait)
+{
   for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
@@ -57,11 +68,14 @@ void colorWipe(uint32_t c, uint8_t wait) {
   }
 }
 
-void rainbow(uint8_t wait) {
+void rainbow(uint8_t wait)
+{
   uint16_t i, j;
 
-  for(j=0; j<256; j++) {
-    for(i=0; i<strip.numPixels(); i++) {
+  for(j=0; j<256; j++)
+  {
+    for(i=0; i<strip.numPixels(); i++)
+    {
       strip.setPixelColor(i, Wheel((i+j) & 255));
     }
     strip.show();
@@ -70,11 +84,13 @@ void rainbow(uint8_t wait) {
 }
 
 // Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
+void rainbowCycle(uint8_t wait)
+{
   uint16_t i, j;
 
   for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strip.numPixels(); i++) {
+    for(i=0; i< strip.numPixels(); i++)
+    {
       strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
     strip.show();
@@ -83,17 +99,21 @@ void rainbowCycle(uint8_t wait) {
 }
 
 //Theatre-style crawling lights.
-void theaterChase(uint32_t c, uint8_t wait) {
+void theaterChase(uint32_t c, uint8_t wait)
+{
   for (int j=0; j<10; j++) {  //do 10 cycles of chasing
-    for (int q=0; q < 3; q++) {
-      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+    for (int q=0; q < 3; q++)
+    {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3)
+      {
         strip.setPixelColor(i+q, c);    //turn every third pixel on
       }
       strip.show();
 
       delay(wait);
 
-      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3)
+      {
         strip.setPixelColor(i+q, 0);        //turn every third pixel off
       }
     }
@@ -101,17 +121,22 @@ void theaterChase(uint32_t c, uint8_t wait) {
 }
 
 //Theatre-style crawling lights with rainbow effect
-void theaterChaseRainbow(uint8_t wait) {
-  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
-    for (int q=0; q < 3; q++) {
-      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+void theaterChaseRainbow(uint8_t wait)
+{
+  for (int j=0; j < 256; j++)
+  {     // cycle all 256 colors in the wheel
+    for (int q=0; q < 3; q++)
+    {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3)
+      {
         strip.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
       }
       strip.show();
 
       delay(wait);
 
-      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3)
+      {
         strip.setPixelColor(i+q, 0);        //turn every third pixel off
       }
     }
@@ -120,12 +145,15 @@ void theaterChaseRainbow(uint8_t wait) {
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
+uint32_t Wheel(byte WheelPos)
+{
   WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
+  if(WheelPos < 85)
+  {
     return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
   }
-  if(WheelPos < 170) {
+  if(WheelPos < 170)
+  {
     WheelPos -= 85;
     return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
